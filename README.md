@@ -10,8 +10,8 @@ A [Stable Diffusion WebUI Forge Neo](https://github.com/Haoming02/sd-webui-forge
 - 🖼️ **Preview + metadata** — large preview with extracted generation info (prompt, model, sampler, seed, LoRAs, etc.).
 - ☑️ **Multi-selection** — Ctrl/Cmd click, Shift+click range selection, click to toggle.
 - 🆚 **Compare mode** — compare two images side-by-side with highlighted metadata differences.
-- 📝 **Post editor** — title, description, tags, NSFW flag.
-- 📅 **Scheduling** — publish now, schedule a date/time, or save as draft.
+- 📝 **Post editor** — title, description, tags.
+- 📅 **Publish or draft** — publish immediately or save as draft.
 - 🚀 **Direct upload** — posts to CivitAI through the official `civitai-mcp-server` hosted endpoint.
 
 ## Requirements
@@ -42,7 +42,7 @@ You can create an API key at [civitai.com/user/account](https://civitai.com/user
 3. Click images to select them (Ctrl/Cmd for multi, Shift for range).
 4. Hover images to preview and see metadata.
 5. Click the ⭐ to mark favorites.
-6. Edit title, description, tags, schedule on the right panel.
+6. Edit title, description, tags and choose publish/draft on the right panel.
 7. Click **🚀 Post** to upload to CivitAI.
 
 ### Compare mode

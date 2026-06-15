@@ -15,7 +15,7 @@ Key capabilities:
 - Preview images with extracted metadata (prompt, model, sampler, seed, LoRAs, etc.).
 - Multi-selection with Ctrl/Cmd and Shift range selection.
 - Compare two images side-by-side with metadata diff.
-- Build CivitAI posts with title, description, tags, NSFW flag, and scheduling.
+- Build CivitAI posts with title, description, tags, and publish/draft mode.
 - Upload directly through `https://mcp.civitai.com/mcp`.
 
 ## Technology Stack

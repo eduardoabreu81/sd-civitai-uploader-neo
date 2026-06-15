@@ -283,6 +283,16 @@
 }
 
 /* ── Selected images ── */
+.gallery-selected-header {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--body-text-color);
+    padding: 6px 8px;
+    background: var(--block-background-fill);
+    border-radius: 6px;
+    margin-bottom: 6px;
+}
+
 .gallery-selected-list {
     display: flex;
     flex-direction: column;

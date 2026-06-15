@@ -5,6 +5,7 @@
 (function () {
     const SELECTED_KEY = 'civitai-gallery-selected';
     const LAST_CLICKED_KEY = 'civitai-gallery-last-clicked';
+    const MAX_IMAGES_PER_POST = 20;
 
     function getInput(selector) {
         const el = gradioApp().querySelector(selector);
@@ -87,8 +88,12 @@
                 const start = Math.min(lastIndex, index);
                 const end = Math.max(lastIndex, index);
                 const range = allPaths.slice(start, end + 1);
-                const newSelected = Array.from(new Set([...selected, ...range]));
-                writeSelected(newSelected);
+                const combined = Array.from(new Set([...selected, ...range]));
+                if (combined.length > MAX_IMAGES_PER_POST) {
+                    alert(`This selection would exceed the ${MAX_IMAGES_PER_POST} images per post limit.`);
+                    return;
+                }
+                writeSelected(combined);
             }
         } else if (event.ctrlKey || event.metaKey) {
             // Toggle individual
@@ -100,8 +105,14 @@
         } else {
             // Simple toggle
             const idx = selected.indexOf(path);
-            if (idx >= 0) selected.splice(idx, 1);
-            else selected.push(path);
+            if (idx >= 0) {
+                selected.splice(idx, 1);
+            } else if (selected.length < MAX_IMAGES_PER_POST) {
+                selected.push(path);
+            } else {
+                alert(`CivitAI allows up to ${MAX_IMAGES_PER_POST} images per post. Deselect another image first.`);
+                return;
+            }
             writeSelected(selected);
             writeLastClicked(path);
         }

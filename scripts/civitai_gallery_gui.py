@@ -1,6 +1,5 @@
 import html
 import json
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -123,11 +122,16 @@ def _render_tags_cloud() -> str:
     return '\n'.join(rows)
 
 
+MAX_IMAGES_PER_POST = 20
+
+
 def _render_selected_html(selected_paths: List[str], tile_size: int) -> str:
+    count = len(selected_paths)
     if not selected_paths:
         return '<div class="gallery-empty">No images selected.<br>Click images in the gallery to select them.</div>'
 
-    rows = ['<div class="gallery-selected-list" id="gallery-selected-list">']
+    header = f'<div class="gallery-selected-header">Selected ({count}/{MAX_IMAGES_PER_POST})</div>'
+    rows = [header, '<div class="gallery-selected-list" id="gallery-selected-list">']
     for idx, path in enumerate(selected_paths, 1):
         thumb_url = _utils.thumbnail_to_base64(path, tile_size)
         if not thumb_url:
@@ -319,12 +323,16 @@ def _update_selection(selected_json: str, tile_size: int) -> tuple:
     if len(selected) == 2:
         compare_html = _render_compare_html(selected[0], selected[1])
 
+    can_post = 0 < len(selected) <= MAX_IMAGES_PER_POST
+    post_update = gr.update(interactive=can_post)
+
     return (
         selected_json,
         _render_selected_html(selected, tile_size),
         preview_html,
         metadata_html,
         compare_html,
+        post_update,
     )
 
 
@@ -363,17 +371,17 @@ def _handle_fav_toggle(fav_json: str, folder: str, tile_size: int, search_text: 
     return browser_html, tags_html, ''
 
 
-def _auto_fill_from_metadata(selected_json: str, title: str, description: str, tags: str) -> tuple:
+def _auto_fill_from_metadata(selected_json: str, title: str, detail: str, tags: str) -> tuple:
     try:
         selected = json.loads(selected_json) if selected_json else []
     except json.JSONDecodeError:
         selected = []
 
     if not selected:
-        return title, description, tags
+        return title, detail, tags
 
     metadata = _meta.extract_metadata(selected[0])
-    new_description = _meta.metadata_to_description(metadata)
+    new_detail = _meta.metadata_to_description(metadata)
     new_title = Path(selected[0]).stem
 
     suggested_tags = set()
@@ -392,23 +400,13 @@ def _auto_fill_from_metadata(selected_json: str, title: str, description: str, t
 
     return (
         title or new_title,
-        description or new_description,
+        detail or new_detail,
         tags_str,
     )
 
 
-def _build_published_at(schedule_mode: str, schedule_date: str, schedule_time: str) -> Optional[str]:
-    if schedule_mode == 'Now':
-        return 'now'
-    if schedule_mode == 'Draft':
-        return None
-    if not schedule_date or not schedule_time:
-        return None
-    try:
-        dt = datetime.strptime(f'{schedule_date} {schedule_time}', '%Y-%m-%d %H:%M')
-        return dt.strftime('%Y-%m-%dT%H:%M:%S')
-    except ValueError:
-        return None
+def _build_publish_flag(publish_mode: str) -> bool:
+    return publish_mode == 'Publish now'
 
 
 def _split_tags(tags_text: str) -> List[str]:
@@ -420,12 +418,9 @@ def _split_tags(tags_text: str) -> List[str]:
 def post_to_civitai(
     selected_json: str,
     title: str,
-    description: str,
+    detail: str,
     tags_text: str,
-    nsfw: bool,
-    schedule_mode: str,
-    schedule_date: str,
-    schedule_time: str,
+    publish_mode: str,
     resize_upload: int,
 ) -> str:
     try:
@@ -435,6 +430,8 @@ def post_to_civitai(
 
     if not selected:
         return '❌ No images selected.'
+    if len(selected) > MAX_IMAGES_PER_POST:
+        return f'❌ CivitAI allows up to {MAX_IMAGES_PER_POST} images per post. You selected {len(selected)}.'
     if not title.strip():
         return '❌ Title is required.'
 
@@ -447,7 +444,7 @@ def post_to_civitai(
 
     logs = [f'👤 Logged in as {structured.get("username", "unknown")}']
 
-    image_ids = []
+    image_uuids = []
     for path in selected:
         logs.append(f'⏳ Uploading {Path(path).name}...')
         result = _api.upload_image(path, resize=resize_upload if resize_upload > 0 else None)
@@ -461,20 +458,19 @@ def post_to_civitai(
             logs.append(f'⚠️ Upload succeeded but no UUID returned: {result.get("text")}')
             return '<br>'.join(logs)
 
-        image_ids.append(image_uuid)
+        image_uuids.append(image_uuid)
         logs.append(f'✅ Uploaded {Path(path).name} → {image_uuid}')
 
-    published_at = _build_published_at(schedule_mode, schedule_date, schedule_time)
+    publish = _build_publish_flag(publish_mode)
     tags = _split_tags(tags_text)
 
     logs.append('⏳ Creating post...')
     post_result = _api.create_post(
         title=title.strip(),
-        description=description.strip(),
-        image_ids=image_ids,
+        detail=detail.strip(),
+        image_uuids=image_uuids,
         tags=tags,
-        nsfw=nsfw,
-        published_at=published_at,
+        publish=publish,
     )
 
     if not post_result.get('ok'):
@@ -483,7 +479,16 @@ def post_to_civitai(
 
     post_data = post_result.get('structured') or {}
     post_id = post_data.get('id')
-    post_url = post_data.get('url') or (f'https://civitai.com/posts/{post_id}' if post_id else None)
+    post_url = None
+
+    # Try to get the canonical URL from the created post
+    if post_id:
+        get_result = _api.get_post(post_id)
+        if get_result.get('ok'):
+            post_url = (get_result.get('structured') or {}).get('url')
+        if not post_url:
+            post_url = f'https://civitai.com/posts/{post_id}'
+
     if post_url:
         logs.append(f'✅ Post created: <a href="{post_url}" target="_blank">{post_url}</a>')
     else:
@@ -576,22 +581,18 @@ def on_ui_tabs():
                     with gr.Column(scale=1, min_width=300):
                         gr.Markdown('### ✏️ Post details')
                         title_input = gr.Textbox(label='Title', placeholder='Post title')
-                        description_input = gr.Textbox(
-                            label='Description',
-                            placeholder='Supports Markdown',
+                        detail_input = gr.Textbox(
+                            label='Description / Detail',
+                            placeholder='Supports Markdown / HTML',
                             lines=6
                         )
                         tags_input = gr.Textbox(label='CivitAI tags', placeholder='comma, separated')
-                        nsfw_input = gr.Checkbox(label='NSFW content', value=False)
 
-                        schedule_mode = gr.Radio(
-                            label='Schedule',
-                            choices=['Now', 'Schedule', 'Draft'],
-                            value='Now'
+                        publish_mode = gr.Radio(
+                            label='Publish',
+                            choices=['Publish now', 'Save as draft'],
+                            value='Publish now'
                         )
-                        with gr.Row():
-                            schedule_date = gr.Textbox(label='Date (YYYY-MM-DD)', visible=False)
-                            schedule_time = gr.Textbox(label='Time (HH:MM)', visible=False)
 
                         resize_input = gr.Slider(
                             label='Resize before upload (0 = original)',
@@ -638,7 +639,7 @@ def on_ui_tabs():
         selected_sync.change(
             fn=_update_selection,
             inputs=[selected_sync, tile_slider],
-            outputs=[selected_state, selected_html, preview_html, metadata_html, compare_html],
+            outputs=[selected_state, selected_html, preview_html, metadata_html, compare_html, post_btn],
         )
 
         preview_sync.change(
@@ -655,14 +656,8 @@ def on_ui_tabs():
 
         auto_fill_btn.click(
             fn=_auto_fill_from_metadata,
-            inputs=[selected_state, title_input, description_input, tags_input],
-            outputs=[title_input, description_input, tags_input],
-        )
-
-        schedule_mode.change(
-            fn=lambda mode: (gr.update(visible=mode == 'Schedule'), gr.update(visible=mode == 'Schedule')),
-            inputs=[schedule_mode],
-            outputs=[schedule_date, schedule_time],
+            inputs=[selected_state, title_input, detail_input, tags_input],
+            outputs=[title_input, detail_input, tags_input],
         )
 
         test_btn.click(fn=test_connection, outputs=[log_html])
@@ -672,12 +667,9 @@ def on_ui_tabs():
             inputs=[
                 selected_state,
                 title_input,
-                description_input,
+                detail_input,
                 tags_input,
-                nsfw_input,
-                schedule_mode,
-                schedule_date,
-                schedule_time,
+                publish_mode,
                 resize_input,
             ],
             outputs=[log_html],

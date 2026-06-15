@@ -56,7 +56,6 @@ def mcp_call(tool_name: str, arguments: Dict[str, Any], timeout: int = 120) -> D
         text_parts = [item.get("text", "") for item in content if item.get("type") == "text"]
         full_text = "\n".join(text_parts)
 
-        # Try to parse structured JSON returned inside the text block
         structured = None
         try:
             structured = json.loads(full_text)
@@ -85,11 +84,10 @@ def upload_image(image_path: str, resize: Optional[int] = None) -> Dict[str, Any
 
     try:
         with PILImage.open(image_path) as img:
-            # Convert to RGB if necessary to ensure JPEG compatibility
+            content_type = "image/png"
             if img.mode in ("RGBA", "P"):
                 img = img.convert("RGB")
 
-            # Optional resize to reduce upload size
             if resize:
                 img.thumbnail((resize, resize), PILImage.LANCZOS)
 
@@ -108,9 +106,7 @@ def upload_image(image_path: str, resize: Optional[int] = None) -> Dict[str, Any
                 }
 
             b64 = base64.b64encode(raw_bytes).decode("utf-8")
-            data_url = f"data:image/png;base64,{b64}"
-
-            return mcp_call("upload_image", {"image": data_url})
+            return mcp_call("upload_image", {"data": b64, "contentType": content_type})
 
     except Exception as e:
         return {"ok": False, "error": f"Failed to read/convert image '{image_path}': {e}"}
@@ -118,25 +114,28 @@ def upload_image(image_path: str, resize: Optional[int] = None) -> Dict[str, Any
 
 def create_post(
     title: str,
-    description: str,
-    image_ids: List[str],
+    detail: str,
+    image_uuids: List[str],
     tags: Optional[List[str]] = None,
-    nsfw: bool = False,
-    published_at: Optional[str] = None,
+    publish: bool = False,
 ) -> Dict[str, Any]:
     """Create a CivitAI post with the given images."""
+    images = [{"uuid": uuid, "type": "image"} for uuid in image_uuids]
     arguments: Dict[str, Any] = {
         "title": title,
-        "description": description,
-        "imageIds": image_ids,
-        "nsfw": nsfw,
+        "detail": detail,
+        "images": images,
+        "publish": publish,
     }
     if tags:
         arguments["tags"] = tags
-    if published_at:
-        arguments["publishedAt"] = published_at
 
     return mcp_call("create_post", arguments, timeout=180)
+
+
+def get_post(post_id: int) -> Dict[str, Any]:
+    """Fetch a post by ID to confirm creation and get its URL."""
+    return mcp_call("get_post", {"id": post_id})
 
 
 def whoami() -> Dict[str, Any]:
