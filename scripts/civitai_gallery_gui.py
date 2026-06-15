@@ -523,6 +523,25 @@ def test_connection() -> str:
     return f'✅ Connected as <b>{username}</b> — {status}{muted_text}'
 
 
+def _get_user_status() -> str:
+    """Return a small HTML badge showing the current CivitAI user."""
+    try:
+        result = _api.whoami()
+        if not result.get('ok'):
+            return '<span class="civitai-user-badge error">⚠️ Not connected</span>'
+        data = result.get('structured') or {}
+        username = data.get('username', 'unknown')
+        onboarded = data.get('isOnboarded', False)
+        muted = data.get('muted', False)
+        if onboarded and not muted:
+            return f'<span class="civitai-user-badge ok">👤 {username}</span>'
+        if muted:
+            return f'<span class="civitai-user-badge warn">👤 {username} (muted)</span>'
+        return f'<span class="civitai-user-badge warn">👤 {username} (not onboarded)</span>'
+    except Exception as e:
+        return f'<span class="civitai-user-badge error">⚠️ {e}</span>'
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # UI Definition
 # ─────────────────────────────────────────────────────────────────────────────
@@ -538,6 +557,11 @@ def on_ui_tabs():
 
         gr.Markdown('## 📤 CivitAI Uploader Neo')
         gr.Markdown('Browse, compare and upload your generated images directly to CivitAI.')
+
+        user_status_html = gr.HTML(
+            value=_get_user_status(),
+            elem_id='civitai_gallery_user_status'
+        )
 
         with gr.Tabs():
             # ── Gallery Tab ──
@@ -674,6 +698,11 @@ def on_ui_tabs():
         )
 
         test_btn.click(fn=test_connection, outputs=[log_html])
+
+        civitai_gallery_interface.load(
+            fn=_get_user_status,
+            outputs=[user_status_html],
+        )
 
         post_btn.click(
             fn=post_to_civitai,

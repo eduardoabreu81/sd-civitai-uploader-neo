@@ -1,5 +1,36 @@
 /* CivitAI Uploader Neo styles */
 
+/* ── User status badge ── */
+#civitai_gallery_user_status {
+    margin: -8px 0 12px 0;
+}
+
+.civitai-user-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.civitai-user-badge.ok {
+    background: var(--primary-500);
+    color: white;
+}
+
+.civitai-user-badge.warn {
+    background: var(--orange-500, #f59e0b);
+    color: white;
+}
+
+.civitai-user-badge.error {
+    background: var(--red-500, #ef4444);
+    color: white;
+}
+
+
 /* ── General ── */
 .gallery-empty {
     padding: 40px 20px;

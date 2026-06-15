@@ -1,74 +1,140 @@
-# PROJECT_CONTEXT.md — CivitAI Uploader Neo
+# Project Context Handoff — CivitAI Uploader Neo
 
-> Architecture handoff and sensitive points for AI agents.
+> Internal handoff document. Mantém o contexto técnico e histórico do projeto em um único lugar. **Nunca commit.**
 
 ---
 
-## Identity
+## 1. Visão Geral
+
+**CivitAI Uploader Neo** — Extensão para Stable Diffusion WebUI Forge Neo que permite navegar, comparar e fazer upload de imagens geradas localmente para o CivitAI via o MCP server oficial (`https://mcp.civitai.com/mcp`).
 
 - **Name:** CivitAI Uploader Neo
-- **Purpose:** Let Forge Neo users browse local generated images and upload them as posts to CivitAI via the official MCP server.
+- **Version:** v0.1.0
+- **Repo:** https://github.com/eduardoabreu81/sd-civitai-uploader-neo
 - **Stack:** Python 3.x, Gradio 4.40.0+, Vanilla JS, Sortable.js
 - **Host:** Stable Diffusion WebUI Forge Neo
-- **Repo:** https://github.com/eduardoabreu81/sd-civitai-uploader-neo
 
 ---
 
-## Critical Invariants
+## 2. Estado Atual (v0.1.0)
 
-1. **Gradio 4+ only.** Never use Gradio 3 APIs.
-2. **MCP schemas are authoritative.** Always validate against real schemas via `node mcp-cli.mjs schema <tool>` before changing upload/post logic.
-3. **20 images per post maximum.** Enforced in both JS and Python.
-4. **Never commit runtime artifacts:** `config_states/`, `__pycache__/`, thumbnails.
-5. **API key never logged.** It is read from Forge settings only.
+Extensão funcional com upload real validado:
+- Navegação de pastas locais com subpastas.
+- Preview, metadados de geração e comparação lado a lado.
+- Seleção múltipla com Ctrl/Cmd/Shift e reordenação drag-and-drop.
+- Upload direto para CivitAI via MCP (`upload_image` → `create_post`).
+- Limite de 20 imagens por post e 10 MB por imagem.
+- Badge de usuário no topo da aba (`whoami` → `👤 username`).
+
+**Limitação conhecida:** o MCP **não extrai metadados de geração** automaticamente. A solução será colocar os metadados formatados no campo `detail` e associar o checkpoint via `modelVersionId`.
 
 ---
 
-## Architecture Snapshot
+## 3. Invariantes que Não Podem Ser Quebrados
 
-### Components
-- `civitai_gallery_gui.py` — Gradio UI, event bindings, HTML rendering.
-- `civitai_gallery_api.py` — MCP JSON-RPC client.
-- `civitai_gallery_meta.py` — PNG metadata extraction and diff.
-- `civitai_gallery_tags.py` — Local tags/favorites persistence.
-- `civitai_gallery_utils.py` — Filesystem, thumbnails, filters.
-- `civitai-gallery.js` — Frontend selection, preview, drag-drop.
-- `style.css` — UI styling.
+1. **Gradio 4+ only.** Nunca usar APIs do Gradio 3.
+2. **20 imagens por post.** Limite do CivitAI; aplicar no JS e no Python.
+3. **10 MB por imagem.** CivitAI MCP rejeita imagens maiores; converter para PNG e oferecer resize.
+4. **API key nunca logada.** Ler apenas de `opts.civitai_gallery_api_key`.
+5. **Nunca commitar artefatos de runtime:** `config_states/`, `docs/`, `AGENTS.local.md`, `__pycache__/`.
+6. **MCP schemas são autoritativos.** Validar contra o server real antes de mudar lógica de upload/post.
+7. **Não expor NSFW/scheduling na UI** — o MCP `create_post` atual não suporta.
+8. **Manter compatibilidade sem Browser Neo.** A extensão deve funcionar sozinha, mas pode aproveitar o cache do Browser Neo quando disponível.
 
-### Data Flow
+---
+
+## 4. Arquitetura Principal
+
 ```
-User UI (Gradio + JS)
-    ↓
-civitai_gallery_gui.py
-    ↓
-civitai_gallery_utils.py  →  thumbnails + file scan
-    ↓
-civitai_gallery_meta.py   →  metadata extraction
-    ↓
-civitai_gallery_api.py    →  upload_image → create_post (CivitAI MCP)
+Forge Neo
+└── CivitAI Gallery tab (Gradio 4)
+    ├── javascript/civitai-gallery.js
+    │   └── Seleção, preview, favoritos, drag-drop, sync com Gradio
+    ├── scripts/civitai_gallery_gui.py
+    │   └── UI Gradio, callbacks, renderização HTML
+    ├── scripts/civitai_gallery_utils.py
+    │   └── Scan de pastas, thumbnails, filtros
+    ├── scripts/civitai_gallery_meta.py
+    │   └── Extração de metadados PNG e diff
+    ├── scripts/civitai_gallery_tags.py
+    │   └── Tags/favoritos locais
+    ├── scripts/civitai_gallery_api.py
+    │   └── Cliente JSON-RPC para o MCP da CivitAI
+    └── (planned) scripts/civitai_gallery_model_resolver.py
+        └── Resolve modelVersionId a partir do metadata da imagem
 ```
 
-### Fragile Dependencies
-- `modules.images.read_info_from_image` from Forge Neo.
-- CivitAI MCP server schemas (can change).
-- Gradio 4 component DOM structure (affects JS selectors).
+### Fluxo de Upload
+
+1. Usuário seleciona imagens na galeria.
+2. Clica em **Auto-fill** ou preenche título/desc/tags manualmente.
+3. Clica em **Post**.
+4. Backend chama `whoami()` para validar conta.
+5. Para cada imagem:
+   - `upload_image(path)` converte para PNG base64 e envia.
+   - Recebe `uuid` da imagem.
+6. Backend chama `create_post(title, detail, images[].uuid, tags, modelVersionId?, publish)`.
+7. Retorna URL do post/rascunho.
 
 ---
 
-## State Management
+## 5. Descobertas Importantes sobre o MCP
 
-- **Selection:** stored in browser `localStorage` and synced to a hidden Gradio textbox (`#civitai_gallery_selected_sync`).
-- **Folder/filters:** persisted in `config_states/gallery_defaults.json`.
-- **Tags/favorites:** persisted in `config_states/gallery_tags.json`.
-- **Thumbnails:** cached in `config_states/thumbnails/`.
+### `upload_image`
+- Aceita `url` ou `data` (base64) + `contentType` opcional.
+- Retorna `uuid` e dimensões.
+- **Não extrai metadados de geração do PNG.**
+
+### `create_post`
+- Aceita: `title`, `detail`, `images[]`, `tags[]`, `modelVersionId`, `collectionId`, `publish`.
+- **Não aceita metadados estruturados** (prompt, sampler, seed, resources).
+- `modelVersionId` associa o post a uma versão de modelo e funciona corretamente.
+
+### `whoami`
+- Retorna `username`, `isOnboarded`, `completedSteps`, `muted`, etc.
+- Usado para badge de usuário e validação antes de postar.
 
 ---
 
-## Warnings / Sensitive Points
+## 6. Resolução de `modelVersionId` (Planejado)
 
-- The JS relies on `gradioApp().querySelector(...)` for hidden sync inputs. If Gradio's DOM changes, interactions may break.
-- Preview on hover triggers Python callbacks; debounced at 150 ms.
-- Favorite toggle re-renders the browser HTML and relies on `MutationObserver` to restore selection visuals.
-- Sortable.js drag-and-drop is initialized lazily when the selected list appears in the DOM.
+Estratégia híbrida:
+1. Extrair `Model:` do metadata da imagem.
+2. Localizar o arquivo do checkpoint em `models/Stable-diffusion/`.
+3. **Tentar cache do Browser Neo** primeiro:
+   - Arquivo: `extensions/sd-civitai-browser-neo/lib/models/checkpoint_hashes.json`
+   - Mapeia `caminho_do_arquivo → {sha256, modelId, modelVersionId}`.
+4. **Fallback:** calcular SHA256 do arquivo e consultar:
+   - `GET https://civitai.com/api/v1/model-versions/by-hash/{sha256}`
+5. **Cache local** da extensão para evitar re-hash de arquivos grandes.
 
 ---
+
+## 7. Pontos Sensíveis
+
+- **JS depende de `gradioApp().querySelector(...)`** para sincronizar inputs hidden. Mudanças no DOM do Gradio podem quebrar.
+- **Preview on hover** dispara callbacks Python; debounce de 150 ms.
+- **Favorite toggle** re-renderiza o browser HTML e depende de `MutationObserver` para restaurar visuais de seleção.
+- **Sortable.js** é inicializado lazy quando a lista de selecionados aparece no DOM.
+- **Upload de checkpoints grandes:** SHA256 de ~7 GB demora ~6s. Cache é essencial.
+
+---
+
+## 8. Como Trabalhar no Projeto
+
+- Ler `README.md`, `AGENTS.md`, `docs/PROJECT_CONTEXT.md` e `docs/PROJECT_LOG.md` antes de alterar comportamento.
+- Preferir mudanças pequenas e localizadas.
+- Validar uploads com uma chave de API real em modo rascunho.
+- Nunca commitar `docs/` nem `AGENTS.local.md`.
+
+---
+
+## 9. Ordem Recomendada para Próximos Passos
+
+1. ✅ Upload real validado com MCP.
+2. ✅ Badge de usuário (`whoami`) adicionado.
+3. 🚧 Implementar `civitai_gallery_model_resolver.py`.
+4. 🚧 Integrar `modelVersionId` no `create_post`.
+5. 🚧 Formatar e injetar metadados de geração no `detail`.
+6. Testar fluxo completo dentro do Forge Neo.
+7. Corrigir problemas específicos do Gradio 4 conforme feedback.

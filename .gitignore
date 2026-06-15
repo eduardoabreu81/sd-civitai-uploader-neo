@@ -8,6 +8,10 @@ venv/
 # Extension runtime state
 config_states/
 
+# Internal agent docs (project-init pattern)
+docs/
+AGENTS.local.md
+
 # IDE
 .vscode/
 .idea/

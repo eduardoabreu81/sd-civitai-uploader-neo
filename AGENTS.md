@@ -17,6 +17,7 @@ Key capabilities:
 - Compare two images side-by-side with metadata diff.
 - Build CivitAI posts with title, description, tags, and publish/draft mode.
 - Upload directly through `https://mcp.civitai.com/mcp`.
+- User status badge showing the connected CivitAI account.
 
 ## Technology Stack
 
@@ -56,12 +57,31 @@ sd-civitai-uploader-neo/
 │   ├── civitai_gallery_api.py       # CivitAI MCP client
 │   ├── civitai_gallery_meta.py      # PNG metadata extraction and diff
 │   ├── civitai_gallery_tags.py      # Local tags and favorites
-│   └── civitai_gallery_utils.py     # Filesystem, thumbnails, filters
+│   ├── civitai_gallery_utils.py     # Filesystem, thumbnails, filters
+│   └── (planned) civitai_gallery_model_resolver.py  # modelVersionId resolver
 └── config_states/                   # Runtime state (gitignored)
     ├── gallery_defaults.json
     ├── gallery_tags.json
     └── thumbnails/
 ```
+
+## MCP Tools Used
+
+### `upload_image`
+Uploads a local image to CivitAI storage.
+- Parameters: `url` OR `data` (base64), optional `contentType`.
+- Returns: image `uuid` and dimensions.
+- Note: does **not** extract generation metadata from the PNG.
+
+### `create_post`
+Creates a CivitAI post and attaches images.
+- Parameters: `title`, `detail`, `images[]`, `tags[]`, `modelVersionId`, `collectionId`, `publish`.
+- `images[]` items need `uuid` (from `upload_image`) and `type` (`image`/`video`/`audio`).
+- `modelVersionId` associates the post with a checkpoint version.
+
+### `whoami`
+Returns current user info and onboarding status.
+- Used for the user badge and to validate the account before posting.
 
 ## Code Style Guidelines
 
@@ -94,9 +114,19 @@ Scope : python | js | css | readme
 - Uploaded images are sent directly to CivitAI; no intermediary server.
 - Respect user folder selection; never scan outside the chosen directory tree without explicit action.
 
+## Known MCP Limitations
+
+- **No structured generation metadata** — `create_post` does not accept prompt, sampler, seed, etc. Workaround: include them in `detail`.
+- **No NSFW flag** — the current schema does not expose this field.
+- **No scheduling** — only `publish=true` (now) or `publish=false` (draft).
+- **20 images per post** — hard cap from CivitAI.
+- **10 MB per image** — enforced by the MCP server.
+
 ## Runtime Artifacts (never commit)
 
 - `config_states/` — local settings, tags, favorites and thumbnail cache.
+- `docs/` — internal agent handoff docs.
+- `AGENTS.local.md` — local agent notes.
 
 ## Useful References
 

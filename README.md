@@ -55,6 +55,10 @@ Built for power users who generate dozens of images and want a fast, visual work
 - Your CivitAI API key is stored in Forge Neo settings.
 - Images are uploaded directly from your machine to CivitAI.
 
+### 👤 Account Badge
+- Shows the connected CivitAI username at the top of the tab.
+- Validates onboarding status before posting.
+
 ---
 
 ## 📋 Requirements
@@ -129,6 +133,7 @@ Then restart Forge Neo.
 - **10 MB per image** — enforced by the CivitAI MCP server. Use the resize slider if needed.
 - **No built-in scheduling** — the MCP server supports only `publish now` or `save as draft`.
 - **No NSFW flag on posts** — the current MCP `create_post` schema does not expose this field.
+- **Generation metadata is not extracted automatically** — the MCP upload pipeline does not read PNG metadata. The extension will include generation info in the post description as a workaround.
 - **Videos** are not supported yet; only static images (PNG, JPG, WEBP, GIF, BMP).
 
 ---
@@ -138,7 +143,7 @@ Then restart Forge Neo.
 - [ ] Video upload support (MP4, WEBM, GIF as video).
 - [ ] Bulk add/remove local tags.
 - [ ] Keyboard shortcuts (arrow navigation, delete, favorite).
-- [ ] Integration with CivitAI model resources from metadata.
+- [x] Integration with CivitAI model resources from metadata (modelVersionId association planned).
 - [ ] Auto-publish drafts at a scheduled time (if CivitAI MCP adds support).
 
 ---
