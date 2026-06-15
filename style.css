@@ -291,6 +291,25 @@
     background: var(--block-background-fill);
     border-radius: 6px;
     margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.gallery-clear-btn {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: transparent;
+    border: 1px solid var(--border-color-primary);
+    color: var(--body-text-color);
+    cursor: pointer;
+}
+
+.gallery-clear-btn:hover {
+    background: var(--error-500);
+    color: white;
+    border-color: var(--error-500);
 }
 
 .gallery-selected-list {

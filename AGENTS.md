@@ -98,6 +98,17 @@ Scope : python | js | css | readme
 
 - `config_states/` — local settings, tags, favorites and thumbnail cache.
 
+## Useful References
+
+- `README.md` — public features, changelog, roadmap
+- `docs/PROJECT_CONTEXT.md` — architecture handoff and sensitive points
+- `docs/PROJECT_LOG.md` — dev timeline and decisions
+- `scripts/civitai_gallery_api.py` — MCP client and schemas
+- `scripts/civitai_gallery_meta.py` — metadata extraction
+- `scripts/civitai_gallery_tags.py` — local tags/favorites
+- `scripts/civitai_gallery_utils.py` — filesystem and thumbnails
+- `scripts/civitai_gallery_gui.py` — Gradio UI and callbacks
+
 ---
 
 **Last updated:** 2026-06-15

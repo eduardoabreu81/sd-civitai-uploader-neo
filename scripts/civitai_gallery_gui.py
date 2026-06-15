@@ -1,5 +1,6 @@
 import html
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -130,7 +131,12 @@ def _render_selected_html(selected_paths: List[str], tile_size: int) -> str:
     if not selected_paths:
         return '<div class="gallery-empty">No images selected.<br>Click images in the gallery to select them.</div>'
 
-    header = f'<div class="gallery-selected-header">Selected ({count}/{MAX_IMAGES_PER_POST})</div>'
+    header = (
+        f'<div class="gallery-selected-header">'
+        f'<span>Selected ({count}/{MAX_IMAGES_PER_POST})</span>'
+        f'<button type="button" class="gallery-clear-btn" onclick="clearGallerySelection()">Clear</button>'
+        f'</div>'
+    )
     rows = [header, '<div class="gallery-selected-list" id="gallery-selected-list">']
     for idx, path in enumerate(selected_paths, 1):
         thumb_url = _utils.thumbnail_to_base64(path, tile_size)
@@ -412,7 +418,14 @@ def _build_publish_flag(publish_mode: str) -> bool:
 def _split_tags(tags_text: str) -> List[str]:
     if not tags_text:
         return []
-    return [t.strip() for t in tags_text.split(',') if t.strip()]
+    tags = []
+    for raw in tags_text.split(','):
+        tag = raw.strip().lower()
+        # CivitAI tags: lowercase, no spaces, no special chars
+        tag = re.sub(r'[^a-z0-9_\-]', '', tag.replace(' ', '_'))
+        if tag and tag not in tags:
+            tags.append(tag)
+    return tags
 
 
 def post_to_civitai(

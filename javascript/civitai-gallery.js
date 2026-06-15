@@ -13,6 +13,14 @@
         return el.querySelector('textarea, input');
     }
 
+    function debounce(fn, ms) {
+        let timeout;
+        return function (...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => fn.apply(this, args), ms);
+        };
+    }
+
     function syncState(key, value) {
         localStorage.setItem(key, JSON.stringify(value));
     }
@@ -119,18 +127,21 @@
         updateCardVisuals(readSelected());
     };
 
-    // ── Hover preview ──
-    window.previewGalleryImage = function (img) {
-        const card = img.closest('.gallery-card');
-        if (!card) return;
-        const path = card.dataset.path;
-        if (!path) return;
-
+    // ── Hover preview (debounced) ──
+    const _sendPreview = debounce(function (path) {
         const input = getInput('#civitai_gallery_preview_sync');
         if (input) {
             input.value = path;
             input.dispatchEvent(new Event('input', { bubbles: true }));
         }
+    }, 150);
+
+    window.previewGalleryImage = function (img) {
+        const card = img.closest('.gallery-card');
+        if (!card) return;
+        const path = card.dataset.path;
+        if (!path) return;
+        _sendPreview(path);
     };
 
     // ── Favorite toggle ──
@@ -214,6 +225,12 @@
             }
         });
     }
+
+    // ── Clear selection ──
+    window.clearGallerySelection = function () {
+        writeSelected([]);
+        updateCardVisuals([]);
+    };
 
     // ── Compare tab: post one side ──
     window.postCompareSide = function (side) {
