@@ -1,18 +1,95 @@
-# CivitAI Uploader Neo
+# 📤 CivitAI Uploader Neo
 
-[![Forge Neo](https://img.shields.io/badge/Forge%20Neo-compatible-blue)](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo)
-[![Gradio](https://img.shields.io/badge/Gradio-4.40%2B-orange)](https://gradio.app)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Forge Neo](https://img.shields.io/badge/Forge-Neo-blue)](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo)
+[![Gradio](https://img.shields.io/badge/Gradio-4.40.0-orange)](https://gradio.app/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A [Stable Diffusion WebUI Forge Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo) extension that lets you **browse, compare and upload** your generated images directly to **CivitAI** — without leaving the WebUI.
+> **Extension for [Stable Diffusion WebUI Forge - Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo)**
 
-Built for power users who generate dozens of images and want a fast, visual workflow to curate and post the best ones.
+Browse, compare, and upload your generated images directly to CivitAI from inside Forge Neo — with metadata-aware captions, drag-and-drop curation, and one-click posting via the official CivitAI MCP server.
 
 ---
 
-## 🚀 Features
+## 📋 Table of Contents
 
-### 🗂️ Local Image Browser
+- [What's New](#-whats-new)
+- [Changelog](#-changelog)
+- [Roadmap](#️-roadmap)
+- [Features](#-features)
+- [Installation](#-installation)
+- [Setup](#-setup)
+- [Usage](#-usage)
+- [Known Limitations](#-known-limitations)
+- [Credits](#-credits)
+
+---
+
+## 🆕 What's New
+
+### v0.1.0 — Initial Release: Browse, Compare & Upload
+
+- **3-column gallery UI** — Sources, preview/metadata, and post editor in one tab.
+- **Smart local browser** — Scan any folder with subfolder navigation, search by filename or generation metadata.
+- **Multi-selection** — Click, Ctrl/Cmd, Shift range selection, and drag-and-drop reordering.
+- **Compare mode** — Side-by-side view with highlighted metadata differences.
+- **Auto-fill post details** — Title, description and tags suggested from the first selected image.
+- **Direct CivitAI upload** — Posts created through the official MCP server (`https://mcp.civitai.com/mcp`).
+- **User status badge** — Shows the connected CivitAI account at the top of the tab.
+- **20 images per post limit** enforced in the UI and backend.
+- **Resize before upload** to stay under CivitAI's 10 MB image cap.
+
+---
+
+## 📖 Changelog
+
+### v0.1.0 — Initial Release
+- Created extension structure for Forge Neo / Gradio 4.40.0+.
+- Implemented CivitAI MCP JSON-RPC client (`scripts/civitai_gallery_api.py`):
+  - `upload_image` via base64 PNG.
+  - `create_post` with title, detail, tags, images and publish/draft mode.
+  - `get_post` to retrieve the canonical post URL.
+  - `whoami` for auth and onboarding validation.
+- Implemented PNG metadata extraction (`scripts/civitai_gallery_meta.py`):
+  - Reads PNG `parameters`, EXIF, or `.txt` sidecar.
+  - Extracts prompt tags, negative prompt, model, sampler, steps, CFG, seed, size and LoRAs.
+  - Metadata diff for compare mode.
+- Implemented local tags/favorites system (`scripts/civitai_gallery_tags.py`).
+- Implemented filesystem utilities (`scripts/civitai_gallery_utils.py`):
+  - Recursive folder scanning, thumbnail cache, filtering and sorting.
+- Implemented Gradio UI (`scripts/civitai_gallery_gui.py`):
+  - Gallery tab with sources, filters, preview, metadata and post editor.
+  - Compare tab for two-image side-by-side review.
+- Implemented vanilla JS frontend (`javascript/civitai-gallery.js`):
+  - Selection, hover preview, favorite toggle, tag filtering, drag-and-drop reordering.
+- Added custom CSS (`style.css`).
+
+---
+
+## 🗺️ Roadmap
+
+### v0.2.0 — Model Association & Metadata Polish *(planned)*
+- Associate posts with the generation checkpoint via `modelVersionId` when possible.
+- Inject formatted generation metadata into the post description as a fallback for missing MCP auto-extraction.
+- Cache checkpoint hashes to avoid re-hashing large files.
+
+### v0.3.0 — Curation & Bulk Tools *(planned)*
+- Bulk add/remove local tags.
+- Saved search presets.
+- Keyboard shortcuts (arrow navigation, delete, favorite).
+
+### v0.4.0 — Media & Scheduling *(planned)*
+- Video upload support (if CivitAI MCP stabilizes `type: video`).
+- Scheduled publishing (if CivitAI MCP adds support).
+
+### v1.0.0 — First Stable Release *(planned)*
+- All known issues resolved.
+- Full Forge Neo compatibility guarantee.
+
+---
+
+## 🎯 Features
+
+### 🖼️ Local Image Browser
 - Scan any folder (defaults to `outputs/`) with subfolder navigation.
 - Thumbnail grid with adjustable tile size.
 - Sort by date, name or file size.
@@ -50,29 +127,18 @@ Built for power users who generate dozens of images and want a fast, visual work
 - Publish immediately or save as **draft**.
 - Optional resize before upload to stay under CivitAI's 10 MB limit.
 
+### 👤 Account Badge
+- Shows the connected CivitAI username at the top of the tab.
+- Validates onboarding status before posting.
+
 ### 🔐 Secure Upload
 - Uses the official CivitAI MCP server at `https://mcp.civitai.com/mcp`.
 - Your CivitAI API key is stored in Forge Neo settings.
 - Images are uploaded directly from your machine to CivitAI.
 
-### 👤 Account Badge
-- Shows the connected CivitAI username at the top of the tab.
-- Validates onboarding status before posting.
-
----
-
-## 📋 Requirements
-
-- [Stable Diffusion WebUI Forge Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo)
-- Gradio 4.40.0+
-- CivitAI account with API key
-- Completed CivitAI onboarding
-
 ---
 
 ## 📦 Installation
-
-### Via Extensions UI (recommended)
 
 1. Open Forge Neo.
 2. Go to **Extensions** → **Install from URL**.
@@ -82,14 +148,7 @@ Built for power users who generate dozens of images and want a fast, visual work
    ```
 4. Click **Install** and restart Forge Neo.
 
-### Manual
-
-```bash
-cd extensions/
-git clone https://github.com/eduardoabreu81/sd-civitai-uploader-neo.git
-```
-
-Then restart Forge Neo.
+> ⚠️ This extension requires **Forge Neo**.
 
 ---
 
@@ -115,6 +174,7 @@ Then restart Forge Neo.
 4. Hover images to preview and inspect metadata.
 5. Click the **⭐** on a card to mark it as favorite.
 6. On the right panel, fill the title, description and CivitAI tags.
+   - Tip: click **✨ Auto-fill from first image** to pre-populate from metadata.
 7. Choose **Publish now** or **Save as draft**.
 8. Click **🚀 Post**.
 
@@ -133,32 +193,25 @@ Then restart Forge Neo.
 - **10 MB per image** — enforced by the CivitAI MCP server. Use the resize slider if needed.
 - **No built-in scheduling** — the MCP server supports only `publish now` or `save as draft`.
 - **No NSFW flag on posts** — the current MCP `create_post` schema does not expose this field.
-- **Generation metadata is not extracted automatically** — the MCP upload pipeline does not read PNG metadata. The extension will include generation info in the post description as a workaround.
+- **Generation metadata is not extracted automatically** — the MCP upload pipeline does not read PNG metadata. The extension includes generation info in the post description as a workaround.
 - **Videos** are not supported yet; only static images (PNG, JPG, WEBP, GIF, BMP).
 
 ---
 
-## 🗺️ Roadmap
+## 📄 Credits
 
-- [ ] Video upload support (MP4, WEBM, GIF as video).
-- [ ] Bulk add/remove local tags.
-- [ ] Keyboard shortcuts (arrow navigation, delete, favorite).
-- [x] Integration with CivitAI model resources from metadata (modelVersionId association planned).
-- [ ] Auto-publish drafts at a scheduled time (if CivitAI MCP adds support).
+- **[Infinite Image Browsing](https://github.com/zanllp/infinite-image-browsing)** — metadata parsing inspiration.
+- **[Sortable.js](https://sortablejs.github.io/Sortable/)** — drag-and-drop reordering.
+- **[Forge Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo)** by Haoming02 — host WebUI.
 
 ---
 
-## 📝 Changelog
+## 📜 License
 
-### v0.1.0 (2026-06-15)
-- Initial release.
-- 3-column gallery UI with preview, metadata and post editor.
-- Multi-selection, local tags, favorites and compare mode.
-- Direct upload to CivitAI via MCP server.
-- 20 images per post limit and 10 MB image size handling.
+MIT — see [LICENSE](LICENSE)
 
 ---
 
-## 📄 License
+Made with ❤️ for the Stable Diffusion community
 
-MIT
+**[Report Bug](https://github.com/eduardoabreu81/sd-civitai-uploader-neo/issues)** • **[Request Feature](https://github.com/eduardoabreu81/sd-civitai-uploader-neo/issues)** • **[Discussions](https://github.com/eduardoabreu81/sd-civitai-uploader-neo/discussions)**
