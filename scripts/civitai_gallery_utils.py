@@ -7,8 +7,8 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from PIL import Image as PILImage
 
-import scripts.civitai_gallery_meta as _meta
-import scripts.civitai_gallery_tags as _tags
+from . import civitai_gallery_meta as _meta
+from . import civitai_gallery_tags as _tags
 
 
 SUPPORTED_IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp'}

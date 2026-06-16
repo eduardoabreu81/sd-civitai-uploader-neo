@@ -12,10 +12,10 @@ from modules.shared import opts
 from modules.paths import data_path
 
 # === Extension imports ===
-import scripts.civitai_gallery_api as _api
-import scripts.civitai_gallery_meta as _meta
-import scripts.civitai_gallery_tags as _tags
-import scripts.civitai_gallery_utils as _utils
+from . import civitai_gallery_api as _api
+from . import civitai_gallery_meta as _meta
+from . import civitai_gallery_tags as _tags
+from . import civitai_gallery_utils as _utils
 
 
 _EXT_ROOT = Path(__file__).resolve().parents[1]
